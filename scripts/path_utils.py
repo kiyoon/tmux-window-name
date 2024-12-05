@@ -1,15 +1,16 @@
-#!/usr/bin/env python3
+from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import  List, Optional, Tuple
 
 from libtmux.pane import Pane as TmuxPane
+
 
 @dataclass
 class Pane:
     info: TmuxPane
-    program: Optional[str] # None when no program is running
+    program: str | None  # None when no program is running
+
 
 @dataclass
 class DisplayedPath:
@@ -22,18 +23,20 @@ class DisplayedPath:
         path = Path(str(pane.info.pane_current_path))
         return DisplayedPath(pane, path, Path(path.name))
 
-def get_uncommon_path(a: Path, b: Path) -> Tuple[Path, Path]:
-    """Get 2 uncommon path between paths
+
+def get_uncommon_path(a: Path, b: Path) -> tuple[Path, Path]:
+    """Get 2 uncommon path between paths.
 
     Args:
-        a (Path): first path
-        b (Path): second path
+        a: first path
+        b: second path
 
     Returns:
         Tuple of uncommon paths
 
-    E.g:
-        a = 'a/dir1/c', b = 'b/dir2/c' -> ('dir1/c', 'dir2/c')
+    Examples:
+        >>> get_uncommon_path(Path('a/dir1/c'), Path('b/dir2/c'))
+        ('dir1/c', 'dir2/c')
     """
     # Go from -1 to -Maximum length to check each part from the end
     # E.g: 'a/dir1/c', 'b/dir1/c' will go [:-1], [:-2] and stop
@@ -47,14 +50,15 @@ def get_uncommon_path(a: Path, b: Path) -> Tuple[Path, Path]:
 
     return Path(*a.parts[x:]), Path(*b.parts[x:])
 
-def get_exclusive_paths(panes: List[Pane]) -> List[Tuple[Pane, Path]]:
-    """Get exclusive path for each pane (better explaining in the README)
+
+def get_exclusive_paths(panes: list[Pane]) -> list[tuple[Pane, Path]]:
+    """Get exclusive path for each pane (better explaining in the README).
 
     Args:
-        panes (List[Pane]): list of the panes
+        panes: list of the panes
 
     Returns:
-        List of tuples with the original pane and display path
+        List of tuples with the original pane and display path.
     """
     # Start all displays as the last dir (.name)
     exc_paths = [DisplayedPath.from_pane(pane) for pane in panes]
@@ -82,10 +86,11 @@ def get_exclusive_paths(panes: List[Pane]) -> List[Tuple[Pane, Path]]:
             intersected_paths.append(y)
 
         for y in intersected_paths:
-            exc_paths[x].display, exc_paths[y].display = get_uncommon_path(exc_paths[x].full, exc_paths[y].full)
+            exc_paths[x].display, exc_paths[y].display = get_uncommon_path(
+                exc_paths[x].full, exc_paths[y].full
+            )
 
             for same_path in same_paths_different_programs:
                 exc_paths[same_path].display = exc_paths[x].display
 
     return [(p.pane, p.display) for p in exc_paths]
-
