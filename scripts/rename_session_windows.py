@@ -180,6 +180,7 @@ class Options:
     shells: List[str] = field(default_factory=lambda: ['bash', 'fish', 'sh', 'zsh'])
     dir_programs: List[str] = field(default_factory=lambda: ['nvim', 'vim', 'vi', 'git'])
     ignored_programs: List[str] = field(default_factory=lambda: [])
+    use_title_programs: List[str] = field(default_factory=lambda: ['claude', 'codex'])
     ignore_program_diffs: bool = False
     max_name_len: int = 20
     use_tilde: bool = False
@@ -308,10 +309,17 @@ def get_current_program(running_programs: List[bytes], pane: TmuxPane, options: 
                 logging.debug(f'its a shell, parsed shell program {shell_program}')
                 return shell_program
 
+            full_cmd = b' '.join(program).decode()
+
+            # Always return the full command for use_title_programs matches so
+            # try_apply_title_format() can see it even when show_program_args is False.
+            if any(re.search(pat, full_cmd) for pat in options.use_title_programs):
+                return full_cmd
+
             if not options.show_program_args:
                 return program[0].decode()
 
-            return b' '.join(program).decode()
+            return full_cmd
 
     return None
 
@@ -351,6 +359,23 @@ def rename_window(server: Server, window_id: str, window_name: str, max_name_len
     )  # Turn on automatic-rename to make resurrect remeber the option
 
 
+def try_apply_title_format(server: Server, pane: Pane, options: Options) -> bool:
+    """If pane's full command matches use_title_programs, hand the window name
+    over to tmux by setting automatic-rename-format to #{pane_title}, so the
+    name tracks OSC title updates live. Returns True if applied."""
+    if not options.use_title_programs:
+        return False
+    full_cmd = str(pane.program)
+    for pattern in options.use_title_programs:
+        if re.search(pattern, full_cmd):
+            fmt = f'#{{={options.max_name_len}:pane_title}}'
+            logging.debug(f'use_title_programs match ({pattern!r}) for {full_cmd!r}; setting format {fmt}')
+            set_window_tmux_option(server, pane.info.window_id, 'automatic-rename-format', fmt)
+            set_window_tmux_option(server, pane.info.window_id, 'automatic-rename', 'on')
+            return True
+    return False
+
+
 def get_panes_programs(session: Session, options: Options) -> List[Pane]:
     session_active_panes = get_session_active_panes(session)
     try:
@@ -385,6 +410,9 @@ def rename_windows(server: Server, options: Options):
             enabled_in_window = get_window_option(server, pane.info.window_id, 'enabled', 1)
             if not enabled_in_window:
                 logging.debug(f'tmux winodw isnt enabled in {pane.info.window_id}')
+                continue
+
+            if try_apply_title_format(server, pane, options):
                 continue
 
             program_name = get_program_if_dir(str(pane.program), options.dir_programs)

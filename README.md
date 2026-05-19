@@ -251,6 +251,35 @@ Programs that will be skipped/ignored when looking for active program.
 set -g @tmux_window_name_ignored_programs "['sqlite3']" # Default is []
 ```
 
+### `@tmux_window_name_use_title_programs`
+
+Programs whose window name should track the pane title (`#{pane_title}`) instead
+of the program name. Useful for TUIs that animate their title via OSC escapes
+(e.g. Claude Code, Codex CLI showing "Thinking...", spinner frames, current
+context). Entries are **regular expressions** matched against the full command
+line, so `'claude'` also matches `node /.../claude-code/cli.js`.
+
+When matched, `automatic-rename-format` is set to `#{=N:pane_title}` (capped at
+`max_name_len`) and tmux re-evaluates it on every pane-title update — so the
+window name animates live with no polling. Requires `allow-set-title on`
+(default).
+
+```tmux.conf
+set -g @tmux_window_name_use_title_programs "['claude', 'codex']" # This is the default
+```
+
+Notes:
+- Entries are **regular expressions** matched as unanchored substrings. `'claude'`
+  matches `claude`, `claude-code`, and `node /.../claude-code/cli.js`. Anchor
+  with `'^claude$'` if you want an exact match.
+- To opt out of the defaults entirely: `set -g @tmux_window_name_use_title_programs "[]"`.
+- `#{pane_title}` reflects the **active** pane's title, matching tmux's normal
+  automatic-rename behavior. If you split the window and focus a different pane,
+  the window name follows that pane.
+- Cleanup is automatic: when the program exits, the next plugin hook
+  (`after-select-window` etc.) rewrites `automatic-rename-format` to the new
+  program's literal name.
+
 ### `@tmux_window_name_max_name_len`
 
 Maximum name length of a window
