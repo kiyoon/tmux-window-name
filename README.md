@@ -1,5 +1,10 @@
 # Better Window Names for tmux
 
+> [!NOTE]
+> This is a fork of [ofirgall/tmux-window-name](https://github.com/ofirgall/tmux-window-name) with the following additions:
+> - **uv support** — cherry-picked from [al-bashkir/tmux-window-name](https://github.com/al-bashkir/tmux-window-name); run the script via `uv run --script` without a system-wide `libtmux` install.
+> - **[`@tmux_window_name_use_title_programs`](#tmux_window_name_use_title_programs)** — track `#{pane_title}` instead of the program name for matched programs (defaults to `['claude', 'codex']`), so animated TUI titles like Claude Code's "Thinking..." appear live in the window name.
+
 A plugin to name your tmux windows smartly, like IDE's.
 
 ![Tmux Window Name Screenshot](screenshots/example.png)
